@@ -22,6 +22,7 @@ import plotly.offline as pyoff
 import plotly.graph_objects as go
 from tqdm import tqdm
 import warnings
+import json
 
 warnings.filterwarnings("ignore")
 
@@ -104,7 +105,7 @@ class JumpDiffusionSolver:
         M = np.zeros(shape=(len(x), len(x)))
         
         for i in range(len(x)):
-            if x[i] <= 0 or x[i] >= self.L:
+            if x[i] <= self.x0 + 0.1 or x[i] >= self.L:  # Adjusted boundary conditions
                 M[i, i] = 1.0
             else:
                 a_coefficient = self.a_coeff(x[i], sigma, kappa, theta)
@@ -142,7 +143,7 @@ class JumpDiffusionSolver:
         
         for i in range(len(x)):
             integral_list = []
-            if x[i] > 0.0 and x[i] < self.L:
+            if x[i] > self.x0 + 0.1 and x[i] < self.L:
                 for j in positions:
                     x_jump = step_x * j
                     if (i + j) >= 0 and (i + j) <= (len(x) - 1):
@@ -195,10 +196,13 @@ class JumpDiffusionSolver:
         b = np.zeros(len(self.x))
         b[self.x >= self.L] = 1.0
         
-        # Initial condition
+        # Initial condition - adjusted for PINN domain
         self.phi_matrix = np.zeros(shape=(len(self.x), len(self.t)))
-        self.phi_matrix[:, 0] = 1.0 * (self.x > 0.0)
-        self.phi_matrix[len(self.x) - 1, :] = 1.0
+        # Initial condition: 1 if x > threshold (0.0), 0 otherwise
+        initial_threshold = 0.0  # K_threshold from PINN config
+        self.phi_matrix[:, 0] = 1.0 * (self.x > initial_threshold)
+        # Boundary conditions
+        self.phi_matrix[self.x >= self.L, :] = 1.0  # Upper boundary
         
         # Check stability
         self.check_stability()
@@ -248,8 +252,9 @@ class JumpDiffusionSolver:
         
         print("Creating 3D visualization...")
         
-        # Filter to main domain [0, L]
-        accept_x = np.where((self.x >= 0) & (self.x <= self.L))[0]
+        # Filter to main domain [xmin, L] - matching PINN domain
+        xmin = -0.5  # From PINN config
+        accept_x = np.where((self.x >= xmin) & (self.x <= self.L))[0]
         
         # Create meshgrid
         X_indices = accept_x
@@ -302,7 +307,8 @@ class JumpDiffusionSolver:
         if self.phi_matrix is None:
             raise ValueError("Must solve the system first!")
         
-        accept_x = np.where((self.x >= 0) & (self.x <= self.L))[0]
+        xmin = -0.5  # From PINN config  
+        accept_x = np.where((self.x >= xmin) & (self.x <= self.L))[0]
         domain_solution = self.phi_matrix[accept_x, :]
         
         stats = {
@@ -316,38 +322,130 @@ class JumpDiffusionSolver:
         }
         
         return stats
+    
+    def save_comparison_results(self, filename="finite_difference_results.json"):
+        """
+        Save timing and solution statistics for comparison with PINN approach.
+        """
+        if self.phi_matrix is None or self.solve_time is None:
+            raise ValueError("Must solve the system first!")
+        
+        stats = self.get_summary_stats()
+        
+        # Get solution at specific points for detailed comparison
+        xmin = -0.5
+        accept_x = np.where((self.x >= xmin) & (self.x <= self.L))[0]
+        
+        # Sample solution at a few key points and times for comparison
+        mid_time_idx = len(self.t) // 2
+        final_time_idx = -1
+        
+        # Select a few spatial points for detailed comparison
+        x_sample_indices = [accept_x[0], accept_x[len(accept_x)//4], 
+                           accept_x[len(accept_x)//2], accept_x[3*len(accept_x)//4], accept_x[-1]]
+        
+        sample_solutions = {}
+        for i, x_idx in enumerate(x_sample_indices):
+            x_val = self.x[x_idx]
+            sample_solutions[f'x_{x_val:.3f}'] = {
+                'initial': float(self.phi_matrix[x_idx, 0]),
+                'mid_time': float(self.phi_matrix[x_idx, mid_time_idx]),
+                'final_time': float(self.phi_matrix[x_idx, final_time_idx])
+            }
+        
+        results = {
+            'method': 'Finite_Difference_BTCS',
+            'parameters': {
+                'sigma': self.sigma,
+                'kappa': self.kappa, 
+                'theta': self.theta,
+                'mu_jump': self.mu_jump,
+                'sigma_jump': self.sigma_jump,
+                'rate': self.rate,
+                'domain': {
+                    'x_min': float(xmin),
+                    'x_max': float(self.L),
+                    't_min': float(self.t0),
+                    't_max': float(self.tn)
+                },
+                'grid': {
+                    'dx': float(self.dx),
+                    'dt': float(self.dt),
+                    'x_steps': self.xsteps,
+                    't_steps': self.tsteps
+                }
+            },
+            'timing': {
+                'setup_time_seconds': self.solve_time['setup_time'],
+                'iteration_time_seconds': self.solve_time['iteration_time'],
+                'total_time_seconds': self.solve_time['total_time']
+            },
+            'solution_statistics': stats,
+            'sample_solutions': sample_solutions,
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        with open(filename, 'w') as f:
+            json.dump(results, f, indent=2)
+        
+        print(f"Comparison results saved to {filename}")
+        return results
 
 
 def main():
     """
-    Main execution function with example parameters.
+    Main execution function with parameters matching the PINN config.
     """
     print("=" * 60)
-    print("1D Jump-Diffusion PIDE Solver")
+    print("1D Jump-Diffusion PIDE Solver - PINN Comparison")
     print("=" * 60)
+    
+    # Parameters matching the PINN config file
+    # PDE Parameters from config
+    k = 0.3              # Mean reversion speed (kappa)
+    theta_val = 0.0      # Mean reversion level  
+    sigma_val = 0.2      # Volatility
+    lambda_jump = 1.0    # Jump intensity (rate)
+    jump_std = 0.2       # Std dev of jump size (sigma_jump)
+    
+    # Domain from config
+    tmin = 0.0
+    tmax = 1.0  
+    xmin = -0.5
+    xmax = 2.0
+    
+    # Extended domain for jump handling (extend by ~2 jump standard deviations)
+    extension = 4 * jump_std  # 4 * 0.2 = 0.8
+    x0_extended = xmin - extension  # -0.5 - 0.8 = -1.3
+    xn_extended = xmax + extension  # 2.0 + 0.8 = 2.8
+    
+    print(f"PINN Config Parameters:")
+    print(f"  PDE: k={k}, θ={theta_val}, σ={sigma_val}, λ={lambda_jump}, σⱼ={jump_std}")
+    print(f"  Domain: t∈[{tmin}, {tmax}], x∈[{xmin}, {xmax}]")
+    print(f"  Extended grid: x∈[{x0_extended}, {xn_extended}] (for jump handling)")
     
     # Define parameters
     spatial_params = {
-        'x0': -10.0,    # Extended lower boundary
-        'xn': 10.0,     # Extended upper boundary  
-        'L': 8.0,       # Actual domain boundary
-        'xsteps': 1000  # Number of spatial steps
+        'x0': x0_extended,   # Extended lower boundary
+        'xn': xn_extended,   # Extended upper boundary  
+        'L': xmax,           # Actual domain boundary (matches PINN xmax)
+        'xsteps': 1000       # Number of spatial steps
     }
     
     temporal_params = {
-        't0': 0.0,      # Initial time
-        'tn': 1.0,      # Final time
-        'tsteps': 1000  # Number of time steps
+        't0': tmin,          # Initial time (matches PINN tmin)
+        'tn': tmax,          # Final time (matches PINN tmax)
+        'tsteps': 1000       # Number of time steps
     }
     
     model_params = {
-        'sigma': 2.0,       # Volatility
-        'kappa': 0.5,       # Mean reversion rate
-        'theta': 3.5,       # Long-term mean
-        'mu_jump': 0.0,     # Jump size mean
-        'sigma_jump': 0.2,  # Jump size std
-        'rate': 1.0,        # Poisson jump rate
-        'N': 150            # Jump integral points
+        'sigma': sigma_val,     # Volatility (matches PINN)
+        'kappa': k,             # Mean reversion rate (matches PINN k)
+        'theta': theta_val,     # Long-term mean (matches PINN)
+        'mu_jump': 0.0,         # Jump size mean (not specified in PINN config)
+        'sigma_jump': jump_std, # Jump size std (matches PINN)
+        'rate': lambda_jump,    # Poisson jump rate (matches PINN)
+        'N': 150                # Jump integral points
     }
     
     # Create and run solver
@@ -365,9 +463,17 @@ def main():
     print(f"  Grid Size: {stats['grid_points_spatial']} × {stats['grid_points_temporal']} = {stats['total_grid_points']:,} points")
     
     # Create visualization
-    solver.plot_solution(save_html=True, filename="jump_diffusion_solution.html")
+    solver.plot_solution(save_html=True, filename="jump_diffusion_solution_pinn_config.html")
+    
+    # Save comparison results
+    comparison_results = solver.save_comparison_results("finite_difference_results.json")
     
     print("\nExecution completed successfully!")
+    print("\nFor PINN comparison:")
+    print(f"  - Visualization: jump_diffusion_solution_pinn_config.html")
+    print(f"  - Results data: finite_difference_results.json")
+    print(f"  - Total compute time: {comparison_results['timing']['total_time_seconds']:.2f} seconds")
+    
     return solver
 
 
