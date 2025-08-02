@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-1D Jump-Diffusion PIDE Solver
-=============================
+1D Jump-Diffusion PIDE Solver - Probability of Default
+======================================================
 
 This script implements a numerical solver for a 1D jump-diffusion process using
 finite difference methods. The solver tracks execution time and provides 3D
-visualization of the survival probability evolution.
+visualization of the probability of default evolution.
 
 Mathematical Model:
 ∂φ/∂t = (σ²/2)∂²φ/∂x² + κ(θ-x)∂φ/∂x + λ∫[φ(x+y,t) - φ(x,t)]f(y)dy
+
+Output: Probability of Default (PD) = 1 - Survival Probability
 
 Author: Refactored from Jupyter notebook
 """
@@ -30,6 +32,7 @@ warnings.filterwarnings("ignore")
 class JumpDiffusionSolver:
     """
     1D Jump-Diffusion PIDE Solver using implicit finite difference scheme.
+    Calculates Probability of Default (PD) evolution over time and space.
     """
     
     def __init__(self, spatial_params, temporal_params, model_params):
@@ -220,6 +223,10 @@ class JumpDiffusionSolver:
                 N_mat.dot(self.phi_matrix[:, time_step - 1]) + b
             )
         
+        # Convert from survival probability to probability of default
+        print("Converting to Probability of Default (PD = 1 - Survival)...")
+        self.phi_matrix = 1.0 - self.phi_matrix
+        
         iteration_end = time.time()
         total_time = iteration_end - start_time
         iteration_time = iteration_end - iteration_start
@@ -237,15 +244,20 @@ class JumpDiffusionSolver:
         
         return self.phi_matrix
     
-    def survival(self, space, time):
-        """Get survival probability at given space and time indices."""
+    def probability_of_default(self, space, time):
+        """Get probability of default at given space and time indices."""
         if self.phi_matrix is None:
             raise ValueError("Must solve the system first!")
         return self.phi_matrix[space, time]
     
+    # Keep backward compatibility
+    def survival(self, space, time):
+        """Get survival probability at given space and time indices (deprecated - use probability_of_default)."""
+        return 1.0 - self.probability_of_default(space, time)
+    
     def plot_solution(self, save_html=True, filename="jump_diffusion_solution.html"):
         """
-        Create 3D surface plot of the survival probability solution.
+        Create 3D surface plot of the probability of default solution.
         """
         if self.phi_matrix is None:
             raise ValueError("Must solve the system first!")
@@ -261,8 +273,8 @@ class JumpDiffusionSolver:
         T_indices = np.arange(0, len(self.t), 1)
         X, T = np.meshgrid(X_indices, T_indices)
         
-        # Get survival probabilities
-        Phi = self.survival(X, T)
+        # Get probability of default values
+        Phi = self.probability_of_default(X, T)
         
         # Convert indices to actual values
         X_values = self.x0 + self.dx * X
@@ -274,12 +286,12 @@ class JumpDiffusionSolver:
             x=X_values, 
             y=T_values,
             colorscale='Viridis',
-            name='Survival Probability'
+            name='Probability of Default'
         )
         
         layout = go.Layout(
             title=dict(
-                text=f'1D Jump-Diffusion: Survival Probability Evolution<br>'
+                text=f'1D Jump-Diffusion: Probability of Default Evolution<br>'
                      f'<sub>σ={self.sigma}, κ={self.kappa}, θ={self.theta}, '
                      f'λ={self.rate}, σⱼ={self.sigma_jump}</sub>',
                 x=0.5
@@ -287,7 +299,7 @@ class JumpDiffusionSolver:
             scene=dict(
                 xaxis_title='Initial Position',
                 yaxis_title='Time until Maturity',
-                zaxis_title='Survival Probability',
+                zaxis_title='Probability of Default',
                 camera=dict(eye=dict(x=1.5, y=1.5, z=1.5))
             ),
             width=800,
@@ -303,7 +315,7 @@ class JumpDiffusionSolver:
         return fig
     
     def get_summary_stats(self):
-        """Get summary statistics of the solution."""
+        """Get summary statistics of the probability of default solution."""
         if self.phi_matrix is None:
             raise ValueError("Must solve the system first!")
         
@@ -312,10 +324,10 @@ class JumpDiffusionSolver:
         domain_solution = self.phi_matrix[accept_x, :]
         
         stats = {
-            'min_survival_prob': np.min(domain_solution),
-            'max_survival_prob': np.max(domain_solution),
-            'mean_survival_prob': np.mean(domain_solution),
-            'final_time_mean': np.mean(domain_solution[:, -1]),
+            'min_default_prob': np.min(domain_solution),
+            'max_default_prob': np.max(domain_solution),
+            'mean_default_prob': np.mean(domain_solution),
+            'final_time_mean_default_prob': np.mean(domain_solution[:, -1]),
             'grid_points_spatial': len(accept_x),
             'grid_points_temporal': len(self.t),
             'total_grid_points': len(accept_x) * len(self.t)
@@ -348,9 +360,9 @@ class JumpDiffusionSolver:
         for i, x_idx in enumerate(x_sample_indices):
             x_val = self.x[x_idx]
             sample_solutions[f'x_{x_val:.3f}'] = {
-                'initial': float(self.phi_matrix[x_idx, 0]),
-                'mid_time': float(self.phi_matrix[x_idx, mid_time_idx]),
-                'final_time': float(self.phi_matrix[x_idx, final_time_idx])
+                'initial_pd': float(self.phi_matrix[x_idx, 0]),
+                'mid_time_pd': float(self.phi_matrix[x_idx, mid_time_idx]),
+                'final_time_pd': float(self.phi_matrix[x_idx, final_time_idx])
             }
         
         results = {
@@ -457,21 +469,21 @@ def main():
     # Get summary statistics
     stats = solver.get_summary_stats()
     print("\nSolution Summary:")
-    print(f"  Survival Probability Range: [{stats['min_survival_prob']:.6f}, {stats['max_survival_prob']:.6f}]")
-    print(f"  Mean Survival Probability: {stats['mean_survival_prob']:.6f}")
-    print(f"  Final Time Mean: {stats['final_time_mean']:.6f}")
+    print(f"  Probability of Default Range: [{stats['min_default_prob']:.6f}, {stats['max_default_prob']:.6f}]")
+    print(f"  Mean Probability of Default: {stats['mean_default_prob']:.6f}")
+    print(f"  Final Time Mean PD: {stats['final_time_mean_default_prob']:.6f}")
     print(f"  Grid Size: {stats['grid_points_spatial']} × {stats['grid_points_temporal']} = {stats['total_grid_points']:,} points")
     
     # Create visualization
-    solver.plot_solution(save_html=True, filename="jump_diffusion_solution_pinn_config.html")
+    solver.plot_solution(save_html=True, filename="probability_of_default_pinn_config.html")
     
     # Save comparison results
-    comparison_results = solver.save_comparison_results("finite_difference_results.json")
+    comparison_results = solver.save_comparison_results("probability_of_default_results.json")
     
     print("\nExecution completed successfully!")
     print("\nFor PINN comparison:")
-    print(f"  - Visualization: jump_diffusion_solution_pinn_config.html")
-    print(f"  - Results data: finite_difference_results.json")
+    print(f"  - Visualization: probability_of_default_pinn_config.html")
+    print(f"  - Results data: probability_of_default_results.json")
     print(f"  - Total compute time: {comparison_results['timing']['total_time_seconds']:.2f} seconds")
     
     return solver
