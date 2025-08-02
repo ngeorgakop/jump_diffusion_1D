@@ -21,10 +21,12 @@ The underlying stochastic process combines:
 - `config.py` - Shared configuration parameters
 
 ### Data Files
-- `Jump_Diffusion_1D_v2 (1).ipynb` - Original development notebook
 - `levy_ou_pinn_model.pth` - Pre-trained PINN model weights
 - `probability_of_default_results.json` - FD solver results cache
 - `method_comparison_results.json` - Detailed comparison metrics
+
+### Output Directory
+- `plots/` - Interactive HTML visualizations from both methods
 
 ## Usage
 
@@ -33,7 +35,7 @@ The underlying stochastic process combines:
 # Finite Difference solver
 python jump_diffusion_solver.py
 
-# Generates: probability_of_default_pinn_config.html
+# Generates: plots/probability_of_default_pinn_config.html
 ```
 
 ### Run Comparison Analysis
@@ -42,11 +44,11 @@ python jump_diffusion_solver.py
 python compare_methods.py
 
 # Generates: 
-#   - comparison_pinn_solution.html
-#   - comparison_fd_solution.html  
-#   - comparison_absolute_diff.html
-#   - comparison_relative_diff.html
-#   - comparison_side_by_side.html
+#   - plots/comparison_pinn_solution.html
+#   - plots/comparison_fd_solution.html  
+#   - plots/comparison_absolute_diff.html
+#   - plots/comparison_relative_diff.html
+#   - plots/comparison_side_by_side.html
 #   - method_comparison_results.json
 ```
 

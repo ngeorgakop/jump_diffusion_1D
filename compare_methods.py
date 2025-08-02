@@ -344,7 +344,7 @@ class MethodComparator:
                 scene=scene_settings,
                 **layout_settings
             )
-            pinn_filename = f"{base_filename}_pinn_solution.html"
+            pinn_filename = f"plots/{base_filename}_pinn_solution.html"
             fig_pinn.write_html(pinn_filename)
             figures['pinn'] = fig_pinn
             print(f"    Saved: {pinn_filename}")
@@ -369,7 +369,7 @@ class MethodComparator:
             scene=scene_settings,
             **layout_settings
         )
-        fd_filename = f"{base_filename}_fd_solution.html"
+        fd_filename = f"plots/{base_filename}_fd_solution.html"
         fig_fd.write_html(fd_filename)
         figures['fd'] = fig_fd
         print(f"    Saved: {fd_filename}")
@@ -397,7 +397,7 @@ class MethodComparator:
                 scene={**scene_settings, 'zaxis_title': 'Absolute Error'},
                 **layout_settings
             )
-            abs_filename = f"{base_filename}_absolute_diff.html"
+            abs_filename = f"plots/{base_filename}_absolute_diff.html"
             fig_abs.write_html(abs_filename)
             figures['absolute'] = fig_abs
             print(f"    Saved: {abs_filename}")
@@ -423,7 +423,7 @@ class MethodComparator:
                 scene={**scene_settings, 'zaxis_title': 'Relative Error'},
                 **layout_settings
             )
-            rel_filename = f"{base_filename}_relative_diff.html"
+            rel_filename = f"plots/{base_filename}_relative_diff.html"
             fig_rel.write_html(rel_filename)
             figures['relative'] = fig_rel
             print(f"    Saved: {rel_filename}")
@@ -472,7 +472,7 @@ class MethodComparator:
             
             fig_compare.update_scenes(**scene_settings)
             
-            compare_filename = f"{base_filename}_side_by_side.html"
+            compare_filename = f"plots/{base_filename}_side_by_side.html"
             fig_compare.write_html(compare_filename)
             figures['comparison'] = fig_compare
             print(f"    Saved: {compare_filename}")
@@ -607,7 +607,7 @@ def main():
     if results:
         print("\nComparison completed successfully!")
         print("Generated files:")
-        print("  - pinn_vs_fd_comparison.html (interactive visualization)")
+        print("  - plots/ directory (interactive visualizations)")
         print("  - method_comparison_results.json (detailed metrics)")
     else:
         print("\nComparison completed with limitations (PINN model may not be available)")

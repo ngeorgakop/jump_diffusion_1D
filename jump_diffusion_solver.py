@@ -260,7 +260,7 @@ class JumpDiffusionSolver:
         """Get survival probability at given space and time indices (deprecated - use probability_of_default)."""
         return 1.0 - self.probability_of_default(space, time)
     
-    def plot_solution(self, save_html=True, filename="jump_diffusion_solution.html"):
+    def plot_solution(self, save_html=True, filename="plots/jump_diffusion_solution.html"):
         """
         Create 3D surface plot of the probability of default solution.
         """
@@ -480,7 +480,7 @@ def main():
     print(f"  Grid Size: {stats['grid_points_spatial']} × {stats['grid_points_temporal']} = {stats['total_grid_points']:,} points")
     
     # Create visualization
-    solver.plot_solution(save_html=True, filename="probability_of_default_pinn_config.html")
+    solver.plot_solution(save_html=True, filename="plots/probability_of_default_pinn_config.html")
     
     # Save comparison results
     comparison_results = solver.save_comparison_results("probability_of_default_results.json")
