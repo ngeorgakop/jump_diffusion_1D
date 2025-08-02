@@ -108,7 +108,8 @@ class JumpDiffusionSolver:
         M = np.zeros(shape=(len(x), len(x)))
         
         for i in range(len(x)):
-            if x[i] <= self.x0 + 0.1 or x[i] >= self.L:  # Adjusted boundary conditions
+            # Apply boundary conditions only at extended grid boundaries, not in visualization domain
+            if x[i] <= self.x0 + 0.05 or x[i] >= self.xn - 0.05:  # Only at extended boundaries
                 M[i, i] = 1.0
             else:
                 a_coefficient = self.a_coeff(x[i], sigma, kappa, theta)
@@ -146,7 +147,8 @@ class JumpDiffusionSolver:
         
         for i in range(len(x)):
             integral_list = []
-            if x[i] > self.x0 + 0.1 and x[i] < self.L:
+            # Apply jump terms everywhere except at extended grid boundaries
+            if x[i] > self.x0 + 0.05 and x[i] < self.xn - 0.05:
                 for j in positions:
                     x_jump = step_x * j
                     if (i + j) >= 0 and (i + j) <= (len(x) - 1):
@@ -195,17 +197,20 @@ class JumpDiffusionSolver:
         M = self.M_matrix(self.x, self.sigma, self.kappa, self.theta)
         N_mat = self.N_matrix(self.x, self.rate, self.N, self.mu_jump, self.sigma_jump, self.dx)
         
-        # Boundary condition
+        # Boundary condition vector for forcing term
         b = np.zeros(len(self.x))
-        b[self.x >= self.L] = 1.0
         
-        # Initial condition - adjusted for PINN domain
+        # Initial condition - adjusted for PINN domain  
         self.phi_matrix = np.zeros(shape=(len(self.x), len(self.t)))
-        # Initial condition: 1 if x > threshold (0.0), 0 otherwise
+        # Initial condition: survival probability = 1 if x > threshold (0.0), 0 otherwise
         initial_threshold = 0.0  # K_threshold from PINN config
         self.phi_matrix[:, 0] = 1.0 * (self.x > initial_threshold)
-        # Boundary conditions
-        self.phi_matrix[self.x >= self.L, :] = 1.0  # Upper boundary
+        
+        # Apply boundary conditions only at extended grid boundaries to avoid artifacts in visualization
+        # Lower extended boundary (x ≤ -1.25): survival prob = 0 → PD = 1 after conversion
+        # Upper extended boundary (x ≥ 2.75): survival prob = 1 → PD = 0 after conversion
+        self.phi_matrix[self.x <= self.x0 + 0.05, :] = 0.0  # Low survival at extended lower boundary
+        self.phi_matrix[self.x >= self.xn - 0.05, :] = 1.0  # High survival at extended upper boundary
         
         # Check stability
         self.check_stability()

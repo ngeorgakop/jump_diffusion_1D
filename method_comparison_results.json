@@ -1,0 +1,155 @@
+{
+  "comparison_metadata": {
+    "timestamp": "2025-08-02 17:50:44",
+    "grid_size": "200 x 200",
+    "total_comparison_points": 40000,
+    "domain": {
+      "x_range": [
+        -0.5,
+        2.0
+      ],
+      "t_range": [
+        0.0,
+        1.0
+      ]
+    }
+  },
+  "methods": {
+    "pinn": {
+      "model_path": "levy_ou_pinn_model.pth",
+      "architecture": "6 layers, 30 neurons/layer",
+      "evaluation_time": 0.02681112289428711
+    },
+    "finite_difference": {
+      "results_path": "probability_of_default_results.json",
+      "solver_time": 98.1429660320282,
+      "grid_resolution": "dx=0.004100, dt=0.001000"
+    }
+  },
+  "timing_comparison": {
+    "pinn_inference_time": 0.02681112289428711,
+    "fd_total_time": 98.1429660320282,
+    "speedup_factor": 3660.5317285289984,
+    "faster_method": "PINN"
+  },
+  "comparison_metrics": {
+    "mse": 0.006413051317453375,
+    "rmse": 0.08008152919027817,
+    "mae": 0.03964407785831871,
+    "max_absolute_error": 0.49116098593271884,
+    "max_relative_error": 48179113.86489868,
+    "mean_relative_error": 53071.746488983496,
+    "correlation": 0.9735238439288395,
+    "pinn_range": [
+      0.0006263338727876544,
+      0.9994945526123047
+    ],
+    "fd_range": [
+      -1.3322676295501878e-15,
+      1.0
+    ],
+    "valid_points": 40000
+  },
+  "sample_point_comparison": {
+    "x_-0.496": {
+      "initial_pd": {
+        "pinn": 0.9829734563827515,
+        "finite_difference": 1.0,
+        "absolute_error": 0.017026543617248535,
+        "relative_error": 0.0170265434469831
+      },
+      "mid_time_pd": {
+        "pinn": 0.9914140701293945,
+        "finite_difference": 0.9938582658832955,
+        "absolute_error": 0.0024441957539009795,
+        "relative_error": 0.0024593000966145707
+      },
+      "final_time_pd": {
+        "pinn": 0.9994741082191467,
+        "finite_difference": 0.9592313455181396,
+        "absolute_error": 0.04024276270100713,
+        "relative_error": 0.04195313515295749
+      }
+    },
+    "x_0.127": {
+      "initial_pd": {
+        "pinn": 0.33806297183036804,
+        "finite_difference": 0.0,
+        "absolute_error": 0.33806297183036804,
+        "relative_error": 33806297.183036804
+      },
+      "mid_time_pd": {
+        "pinn": 0.249452605843544,
+        "finite_difference": 0.24070054282329845,
+        "absolute_error": 0.00875206302024556,
+        "relative_error": 0.036360793183015945
+      },
+      "final_time_pd": {
+        "pinn": 0.00091301288921386,
+        "finite_difference": 0.3268059679815267,
+        "absolute_error": 0.32589295509231286,
+        "relative_error": 0.9972062234147214
+      }
+    },
+    "x_0.750": {
+      "initial_pd": {
+        "pinn": 0.017130395397543907,
+        "finite_difference": 0.0,
+        "absolute_error": 0.017130395397543907,
+        "relative_error": 1713039.5397543907
+      },
+      "mid_time_pd": {
+        "pinn": 0.0034354059025645256,
+        "finite_difference": 0.0002709346913741806,
+        "absolute_error": 0.003164471211190345,
+        "relative_error": 11.679399198193334
+      },
+      "final_time_pd": {
+        "pinn": 0.0007320888107642531,
+        "finite_difference": 0.0058533615467080136,
+        "absolute_error": 0.00512127273594376,
+        "relative_error": 0.8749269878185006
+      }
+    },
+    "x_1.373": {
+      "initial_pd": {
+        "pinn": 0.0014096145750954747,
+        "finite_difference": 0.0,
+        "absolute_error": 0.0014096145750954747,
+        "relative_error": 140961.45750954747
+      },
+      "mid_time_pd": {
+        "pinn": 0.0008830958977341652,
+        "finite_difference": 3.140869908602184e-08,
+        "absolute_error": 0.0008830644890350792,
+        "relative_error": 21325.579130139144
+      },
+      "final_time_pd": {
+        "pinn": 0.0006932076066732407,
+        "finite_difference": 1.283091665771341e-05,
+        "absolute_error": 0.0006803766900155273,
+        "relative_error": 52.985056141364474
+      }
+    },
+    "x_1.996": {
+      "initial_pd": {
+        "pinn": 0.0008714877185411751,
+        "finite_difference": 0.0,
+        "absolute_error": 0.0008714877185411751,
+        "relative_error": 87148.77185411751
+      },
+      "mid_time_pd": {
+        "pinn": 0.0007951955776661634,
+        "finite_difference": 1.790145241153951e-06,
+        "absolute_error": 0.0007934054324250095,
+        "relative_error": 440.7452322660427
+      },
+      "final_time_pd": {
+        "pinn": 0.0006263338727876544,
+        "finite_difference": 3.5187307088069275e-06,
+        "absolute_error": 0.0006228151420788475,
+        "relative_error": 176.49834840738606
+      }
+    }
+  }
+}

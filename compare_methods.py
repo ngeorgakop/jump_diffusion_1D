@@ -207,7 +207,7 @@ class MethodComparator:
         print("Running finite difference solver...")
         start_time = time.time()
         
-        # Create and solve
+        # Create and solve - use the same solver logic as main script
         solver = JumpDiffusionSolver(spatial_params, temporal_params, model_params)
         solution_matrix = solver.solve()
         
@@ -220,19 +220,20 @@ class MethodComparator:
         print("Interpolating finite difference solution to comparison grid...")
         from scipy.interpolate import RegularGridInterpolator
         
-        # Filter to domain of interest
-        accept_x = np.where((solver.x >= xmin) & (solver.x <= xmax))[0]
+        # Filter to domain of interest with small buffer to avoid interpolation artifacts
+        buffer = 0.1
+        accept_x = np.where((solver.x >= xmin - buffer) & (solver.x <= xmax + buffer))[0]
         x_domain = solver.x[accept_x]
         t_domain = solver.t
         solution_domain = solution_matrix[accept_x, :]
         
-        # Create interpolator
+        # Create interpolator with better boundary handling
         interpolator = RegularGridInterpolator(
             (t_domain, x_domain), 
             solution_domain.T,  # Transpose for correct orientation
             method='linear',
             bounds_error=False,
-            fill_value=0.0
+            fill_value=None  # Use extrapolation instead of fixed fill value
         )
         
         # Evaluate on comparison grid
