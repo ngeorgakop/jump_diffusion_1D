@@ -168,6 +168,9 @@ class MethodComparator:
         eval_time = time.time() - start_time
         print(f"PINN evaluation completed in {eval_time:.2f} seconds")
         
+        # Store timing for comparison plots
+        self.pinn_eval_time = eval_time
+        
         return True
     
     def evaluate_fd_solution(self):
@@ -210,6 +213,8 @@ class MethodComparator:
         
         eval_time = time.time() - start_time
         print(f"Finite difference evaluation completed in {eval_time:.2f} seconds")
+        
+        # Note: This includes both setup and solving time for FD method
         
         # Interpolate FD solution onto comparison grid
         print("Interpolating finite difference solution to comparison grid...")
@@ -276,87 +281,203 @@ class MethodComparator:
         print(f"  MAE: {self.comparison_metrics['mae']:.6f}")
         print(f"  Max Error: {self.comparison_metrics['max_absolute_error']:.6f}")
         print(f"  Correlation: {self.comparison_metrics['correlation']:.6f}")
+        
+        # Display timing comparison
+        pinn_time = getattr(self, 'pinn_eval_time', None)
+        fd_time = getattr(self, 'fd_solver_time', None)
+        
+        if pinn_time is not None and fd_time is not None:
+            print(f"\nTiming Comparison:")
+            print(f"  PINN Inference Time: {pinn_time:.4f} seconds")
+            print(f"  FD Total Time: {fd_time:.4f} seconds")
+            speedup = fd_time / pinn_time if pinn_time > 0 else 0
+            print(f"  Speedup Factor: {speedup:.1f}x {'(PINN faster)' if speedup > 1 else '(FD faster)'}")
     
-    def create_comparison_plots(self):
-        """Create comprehensive comparison visualizations."""
+    def create_comparison_plots(self, base_filename="comparison"):
+        """Create separate comparison visualizations."""
         if self.pinn_solution is None or self.fd_solution is None:
             print("Error: Solutions not available for plotting")
             return
         
-        print("Creating comparison visualizations...")
+        print("Creating separate comparison visualizations...")
         
         X, T = self.comparison_grid['X'], self.comparison_grid['T']
         
-        # Create subplots
-        fig = sp.make_subplots(
-            rows=2, cols=2,
-            subplot_titles=('PINN Solution', 'Finite Difference Solution', 
-                          'Absolute Difference', 'Relative Difference'),
-            specs=[[{'type': 'surface'}, {'type': 'surface'}],
-                   [{'type': 'surface'}, {'type': 'surface'}]]
+        # Common scene settings
+        scene_settings = dict(
+            xaxis_title='Time',
+            yaxis_title='Position', 
+            zaxis_title='Probability of Default',
+            aspectmode='cube',
+            camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))
         )
         
-        # PINN solution
-        fig.add_trace(
-            go.Surface(z=self.pinn_solution, x=T, y=X, 
-                      colorscale='Viridis', name='PINN',
-                      showscale=False),
-            row=1, col=1
+        # Common layout settings
+        layout_settings = dict(
+            height=600,
+            width=800,
+            showlegend=False,
+            margin=dict(l=20, r=20, t=80, b=20)
         )
         
-        # FD solution  
-        fig.add_trace(
-            go.Surface(z=self.fd_solution, x=T, y=X,
-                      colorscale='Viridis', name='Finite Difference',
-                      showscale=False),
-            row=1, col=2
-        )
+        figures = {}
         
-        # Absolute difference
-        abs_diff = np.abs(self.pinn_solution - self.fd_solution)
-        fig.add_trace(
-            go.Surface(z=abs_diff, x=T, y=X,
-                      colorscale='Reds', name='|PINN - FD|',
-                      showscale=False),
-            row=2, col=1
-        )
+        # 1. PINN Solution
+        if self.pinn_solution is not None:
+            print("  Creating PINN solution plot...")
+            fig_pinn = go.Figure()
+            fig_pinn.add_trace(
+                go.Surface(
+                    z=self.pinn_solution, x=T, y=X,
+                    colorscale='Viridis',
+                    name='PINN Solution',
+                    showscale=True
+                )
+            )
+            fig_pinn.update_layout(
+                title=dict(
+                    text=f'PINN Solution - Probability of Default<br>'
+                         f'<sub>Range: [{np.min(self.pinn_solution):.3f}, {np.max(self.pinn_solution):.3f}]</sub>',
+                    x=0.5
+                ),
+                scene=scene_settings,
+                **layout_settings
+            )
+            pinn_filename = f"{base_filename}_pinn_solution.html"
+            fig_pinn.write_html(pinn_filename)
+            figures['pinn'] = fig_pinn
+            print(f"    Saved: {pinn_filename}")
         
-        # Relative difference
-        rel_diff = np.abs(self.pinn_solution - self.fd_solution) / (np.abs(self.fd_solution) + 1e-8)
-        fig.add_trace(
-            go.Surface(z=rel_diff, x=T, y=X,
-                      colorscale='Reds', name='Relative Error',
-                      showscale=True),
-            row=2, col=2
+        # 2. FD Solution
+        print("  Creating FD solution plot...")
+        fig_fd = go.Figure()
+        fig_fd.add_trace(
+            go.Surface(
+                z=self.fd_solution, x=T, y=X,
+                colorscale='Viridis',
+                name='FD Solution',
+                showscale=True
+            )
         )
-        
-        # Update layout
-        fig.update_layout(
+        fig_fd.update_layout(
             title=dict(
-                text=f'PINN vs Finite Difference Comparison<br>'
-                     f'<sub>RMSE: {self.comparison_metrics["rmse"]:.6f}, '
-                     f'Max Error: {self.comparison_metrics["max_absolute_error"]:.6f}, '
-                     f'Correlation: {self.comparison_metrics["correlation"]:.4f}</sub>',
+                text=f'Finite Difference Solution - Probability of Default<br>'
+                     f'<sub>Range: [{np.min(self.fd_solution):.3f}, {np.max(self.fd_solution):.3f}]</sub>',
                 x=0.5
             ),
-            height=800,
-            width=1200
+            scene=scene_settings,
+            **layout_settings
         )
+        fd_filename = f"{base_filename}_fd_solution.html"
+        fig_fd.write_html(fd_filename)
+        figures['fd'] = fig_fd
+        print(f"    Saved: {fd_filename}")
         
-        # Update scene properties for all subplots
-        for i in range(1, 5):
-            fig.update_scenes(
-                xaxis_title='Time',
-                yaxis_title='Position', 
-                zaxis_title='Probability of Default',
-                aspectmode='cube'
+        # Only create difference plots if PINN solution is available
+        if self.pinn_solution is not None:
+            # 3. Absolute Difference
+            print("  Creating absolute difference plot...")
+            abs_diff = np.abs(self.pinn_solution - self.fd_solution)
+            fig_abs = go.Figure()
+            fig_abs.add_trace(
+                go.Surface(
+                    z=abs_diff, x=T, y=X,
+                    colorscale='Reds',
+                    name='Absolute Difference',
+                    showscale=True
+                )
             )
+            fig_abs.update_layout(
+                title=dict(
+                    text=f'Absolute Difference |PINN - FD|<br>'
+                         f'<sub>Max Error: {np.max(abs_diff):.6f}, Mean Error: {np.mean(abs_diff):.6f}</sub>',
+                    x=0.5
+                ),
+                scene={**scene_settings, 'zaxis_title': 'Absolute Error'},
+                **layout_settings
+            )
+            abs_filename = f"{base_filename}_absolute_diff.html"
+            fig_abs.write_html(abs_filename)
+            figures['absolute'] = fig_abs
+            print(f"    Saved: {abs_filename}")
+            
+            # 4. Relative Difference
+            print("  Creating relative difference plot...")
+            rel_diff = np.abs(self.pinn_solution - self.fd_solution) / (np.abs(self.fd_solution) + 1e-8)
+            fig_rel = go.Figure()
+            fig_rel.add_trace(
+                go.Surface(
+                    z=rel_diff, x=T, y=X,
+                    colorscale='Reds',
+                    name='Relative Difference',
+                    showscale=True
+                )
+            )
+            fig_rel.update_layout(
+                title=dict(
+                    text=f'Relative Difference |PINN - FD| / |FD|<br>'
+                         f'<sub>Max Rel Error: {np.max(rel_diff):.6f}, Mean Rel Error: {np.mean(rel_diff):.6f}</sub>',
+                    x=0.5
+                ),
+                scene={**scene_settings, 'zaxis_title': 'Relative Error'},
+                **layout_settings
+            )
+            rel_filename = f"{base_filename}_relative_diff.html"
+            fig_rel.write_html(rel_filename)
+            figures['relative'] = fig_rel
+            print(f"    Saved: {rel_filename}")
+            
+            # 5. Side-by-side comparison
+            print("  Creating side-by-side comparison...")
+            fig_compare = sp.make_subplots(
+                rows=1, cols=2,
+                subplot_titles=('PINN Solution', 'FD Solution'),
+                specs=[[{'type': 'surface'}, {'type': 'surface'}]],
+                horizontal_spacing=0.1
+            )
+            
+            fig_compare.add_trace(
+                go.Surface(z=self.pinn_solution, x=T, y=X, 
+                          colorscale='Viridis', showscale=False),
+                row=1, col=1
+            )
+            fig_compare.add_trace(
+                go.Surface(z=self.fd_solution, x=T, y=X,
+                          colorscale='Viridis', showscale=True),
+                row=1, col=2
+            )
+            
+            # Get timing information
+            pinn_time = getattr(self, 'pinn_eval_time', 'N/A')
+            fd_time = getattr(self, 'fd_solver_time', 'N/A')
+            
+            # Format timing display
+            pinn_time_str = f"{pinn_time:.4f}s" if isinstance(pinn_time, (int, float)) else str(pinn_time)
+            fd_time_str = f"{fd_time:.4f}s" if isinstance(fd_time, (int, float)) else str(fd_time)
+            
+            fig_compare.update_layout(
+                title=dict(
+                    text=f'Side-by-Side Comparison<br>'
+                         f'<sub>RMSE: {self.comparison_metrics["rmse"]:.6f}, '
+                         f'Correlation: {self.comparison_metrics["correlation"]:.4f}<br>'
+                         f'PINN Inference: {pinn_time_str}, '
+                         f'FD Total Time: {fd_time_str}</sub>',
+                    x=0.5
+                ),
+                height=600,
+                width=1200,
+                showlegend=False
+            )
+            
+            fig_compare.update_scenes(**scene_settings)
+            
+            compare_filename = f"{base_filename}_side_by_side.html"
+            fig_compare.write_html(compare_filename)
+            figures['comparison'] = fig_compare
+            print(f"    Saved: {compare_filename}")
         
-        # Save plot
-        fig.write_html("pinn_vs_fd_comparison.html")
-        print("Comparison plot saved to pinn_vs_fd_comparison.html")
-        
-        return fig
+        print("All separate visualizations created!")
+        return figures
     
     def save_comparison_results(self, filename="method_comparison_results.json"):
         """Save comprehensive comparison results."""
@@ -365,6 +486,11 @@ class MethodComparator:
         # Get timing information
         pinn_timing = getattr(self, 'pinn_eval_time', 'Not measured')
         fd_timing = getattr(self, 'fd_solver_time', self.fd_results['timing']['total_time_seconds'])
+        
+        # Calculate speedup if both timings are available
+        speedup_factor = None
+        if isinstance(pinn_timing, (int, float)) and isinstance(fd_timing, (int, float)) and pinn_timing > 0:
+            speedup_factor = fd_timing / pinn_timing
         
         results = {
             'comparison_metadata': {
@@ -387,6 +513,12 @@ class MethodComparator:
                     'solver_time': fd_timing,
                     'grid_resolution': f"dx={self.fd_results['parameters']['grid']['dx']:.6f}, dt={self.fd_results['parameters']['grid']['dt']:.6f}"
                 }
+            },
+            'timing_comparison': {
+                'pinn_inference_time': pinn_timing,
+                'fd_total_time': fd_timing,
+                'speedup_factor': speedup_factor,
+                'faster_method': 'PINN' if speedup_factor and speedup_factor > 1 else 'FD' if speedup_factor else 'Unknown'
             },
             'comparison_metrics': self.comparison_metrics,
             'sample_point_comparison': self._compare_sample_points()
