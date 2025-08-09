@@ -458,8 +458,7 @@ class MethodComparator:
             
             fig_compare.update_layout(
                 title=dict(
-                    text=f'Side-by-Side Comparison<br>'
-                         f'<sub>RMSE: {self.comparison_metrics["rmse"]:.6f}, '
+                    text=f'<sub>RMSE: {self.comparison_metrics["rmse"]:.6f}, '
                          f'Correlation: {self.comparison_metrics["correlation"]:.4f}<br>'
                          f'PINN Inference: {pinn_time_str}, '
                          f'FD Total Time: {fd_time_str}</sub>',

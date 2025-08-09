@@ -1,6 +1,6 @@
 {
   "comparison_metadata": {
-    "timestamp": "2025-08-02 17:50:44",
+    "timestamp": "2025-08-02 20:22:55",
     "grid_size": "200 x 200",
     "total_comparison_points": 40000,
     "domain": {
@@ -18,18 +18,18 @@
     "pinn": {
       "model_path": "levy_ou_pinn_model.pth",
       "architecture": "6 layers, 30 neurons/layer",
-      "evaluation_time": 0.02681112289428711
+      "evaluation_time": 0.024604082107543945
     },
     "finite_difference": {
       "results_path": "probability_of_default_results.json",
-      "solver_time": 98.1429660320282,
+      "solver_time": 66.44770407676697,
       "grid_resolution": "dx=0.004100, dt=0.001000"
     }
   },
   "timing_comparison": {
-    "pinn_inference_time": 0.02681112289428711,
-    "fd_total_time": 98.1429660320282,
-    "speedup_factor": 3660.5317285289984,
+    "pinn_inference_time": 0.024604082107543945,
+    "fd_total_time": 66.44770407676697,
+    "speedup_factor": 2700.678033276161,
     "faster_method": "PINN"
   },
   "comparison_metrics": {
