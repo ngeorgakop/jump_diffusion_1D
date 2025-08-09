@@ -12,7 +12,6 @@ Mathematical Model:
 
 Output: Probability of Default (PD) = 1 - Survival Probability
 
-Author: Refactored from Jupyter notebook
 """
 
 import numpy as np

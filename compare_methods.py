@@ -13,7 +13,6 @@ Comparisons include:
 - Performance benchmarking
 - Sample point comparisons
 
-Author: Comparison analysis script
 """
 
 import torch
